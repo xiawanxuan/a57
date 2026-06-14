@@ -1,0 +1,19 @@
+event_name,calibrated_age_yrBP,min_age_yrBP,max_age_yrBP,calibration_curve,source,confidence_level,notes
+Holocene_start,11700,11650,11750,IntCal20,Walker et al. 2019,0.95,全新世底界/末次冰消期结束
+Younger_Dryas_start,12900,12800,13000,IntCal20,Rasmussen et al. 2014,0.95,新仙女木事件起始
+Bolling_Allerod_start,14700,14600,14800,IntCal20,Rasmussen et al. 2014,0.95,Bølling-Allerød 暖期
+LGM_peak,21000,20000,22000,IntCal20,Clark et al. 2009,0.95,末次冰盛期
+MIS3_start,57000,56000,58000,IntCal20,Lisiecki & Raymo 2005,0.95,MIS 3 暖期
+MIS4_start,71000,70000,72000,IntCal20,Lisiecki & Raymo 2005,0.95,MIS 4 冷期
+MIS5e_start,129000,128000,130000,IntCal20,Lisiecki & Raymo 2005,0.95,Eemian 间冰期
+MIS6_start,191000,190000,192000,LR04,Lisiecki & Raymo 2005,0.95,MIS 6 冰期
+MIS7_start,243000,242000,244000,LR04,Lisiecki & Raymo 2005,0.95,MIS 7 间冰期
+MIS8_start,300000,299000,301000,LR04,Lisiecki & Raymo 2005,0.95,MIS 8 冰期
+MIS9_start,337000,336000,338000,LR04,Lisiecki & Raymo 2005,0.95,MIS 9 间冰期
+MIS10_start,374000,373000,375000,LR04,Lisiecki & Raymo 2005,0.95,MIS 10 冰期
+MIS11_start,424000,423000,425000,LR04,Lisiecki & Raymo 2005,0.95,MIS 11 间冰期
+Mid_Pleistocene_Transition_start,900000,850000,950000,LR04,Raymo et al. 2006,0.90,中更新世气候转型
+Brunhes_Matuyama_boundary,780000,770000,790000,GPTS,Gradstein et al. 2012,0.95,布容/松山地磁极性倒转界线
+Jaramillo_subchron_start,990000,980000,1000000,GPTS,Gradstein et al. 2012,0.95,Jaramillo 极性亚时
+Olduvai_subchron_start,1778000,1770000,1786000,GPTS,Gradstein et al. 2012,0.95,Olduvai 极性亚时
+Pleistocene_start,2588000,2580000,2596000,Gradstein et al. 2012,Gradstein et al. 2012,0.95,更新世底界

@@ -1,0 +1,109 @@
+project:
+  name: "第四纪古气候数据分析工程"
+  version: "1.0.0"
+  output_dir: "./output"
+  raw_data_dir: "./data/raw"
+  processed_data_dir: "./data/processed"
+
+global_settings:
+  age_unit: "yr BP"
+  depth_unit: "m"
+  temperature_unit: "°C"
+  precipitation_unit: "mm/yr"
+  random_seed: 42
+  outlier_zscore_threshold: 3.0
+  interpolation_method: "cubic"
+  age_grid_resolution: 100
+
+ice_core_sources:
+  - id: "ICE_DOME_A"
+    name: "Dome A 冰芯"
+    location: "东南极洲 Dome A"
+    file_path: "./data/raw/ice_core_dome_a.csv"
+    file_type: "csv"
+    columns:
+      depth: "depth_m"
+      age: "age_yrBP"
+      d18O: "d18O_permil"
+      dD: "dD_permil"
+      dust: "dust_ppm"
+    enabled: true
+    d18o_to_temp_coef: 0.67
+    d18o_to_temp_intercept: -12.0
+
+  - id: "ICE_GRIP"
+    name: "GRIP 冰芯"
+    location: "格陵兰 Summit"
+    file_path: "./data/raw/ice_core_grip.csv"
+    file_type: "csv"
+    columns:
+      depth: "depth_m"
+      age: "age_yrBP"
+      d18O: "delta18O"
+      dD: "deltaD"
+    enabled: false
+    d18o_to_temp_coef: 0.63
+    d18o_to_temp_intercept: -10.5
+
+stalagmite_sources:
+  - id: "STAL_HULU"
+    name: "葫芦洞石笋"
+    location: "中国南京葫芦洞"
+    file_path: "./data/raw/stalagmite_hulu.csv"
+    file_type: "csv"
+    columns:
+      depth: "depth_mm"
+      age: "age_yrBP"
+      d18O: "d18O_calcite"
+      d13C: "d13C_calcite"
+      mg_ca: "Mg_Ca_ratio"
+      sr_ca: "Sr_Ca_ratio"
+    enabled: true
+    d18o_to_precip_coef: -0.015
+    d18o_to_precip_intercept: 1200.0
+
+  - id: "STAL_SANBAO"
+    name: "三宝洞石笋"
+    location: "中国湖北三宝洞"
+    file_path: "./data/raw/stalagmite_sanbao.csv"
+    file_type: "csv"
+    columns:
+      depth: "depth_mm"
+      age: "age_yrBP"
+      d18O: "d18O"
+      mg_ca: "Mg/Ca"
+    enabled: false
+    d18o_to_precip_coef: -0.012
+    d18o_to_precip_intercept: 1100.0
+
+correlation_settings:
+  methods:
+    - "pearson"
+    - "spearman"
+  min_overlap_points: 30
+  confidence_level: 0.95
+  lag_max: 500
+
+visualization:
+  theme: "plotly_white"
+  figure_width: 1200
+  figure_height: 700
+  color_palette:
+    temperature: "#E74C3C"
+    precipitation: "#3498DB"
+    d18O_ice: "#16A085"
+    d18O_stalagmite: "#8E44AD"
+    dust: "#7F8C8D"
+    mg_ca: "#F39C12"
+  dpi: 150
+  save_formats:
+    - "html"
+    - "png"
+
+report:
+  title: "第四纪古气候代用指标分析报告"
+  author: "第四纪地质研究所"
+  include_correlation_table: true
+  include_summary_statistics: true
+  font_family: "SimSun"
+  font_size: 12

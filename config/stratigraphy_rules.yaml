@@ -1,0 +1,111 @@
+stratigraphy_definitions:
+  quaternary:
+    name: "第四纪"
+    age_start: 0
+    age_end: 2588000
+    epochs:
+      - name: "全新世"
+        code: "Holocene"
+        age_start: 0
+        age_end: 11700
+        color: "#2ECC71"
+        description: "末次冰期结束至今"
+
+      - name: "晚更新世"
+        code: "Late_Pleistocene"
+        age_start: 11700
+        age_end: 129000
+        color: "#3498DB"
+        description: "末次冰期-间冰期旋回"
+        sub_stages:
+          - name: "MIS 1"
+            age_start: 11700
+            age_end: 0
+          - name: "MIS 2 (LGM)"
+            age_start: 29000
+            age_end: 11700
+          - name: "MIS 3"
+            age_start: 57000
+            age_end: 29000
+          - name: "MIS 4"
+            age_start: 71000
+            age_end: 57000
+          - name: "MIS 5a-e"
+            age_start: 129000
+            age_end: 71000
+
+      - name: "中更新世"
+        code: "Middle_Pleistocene"
+        age_start: 129000
+        age_end: 774000
+        color: "#9B59B6"
+        description: "中更新世气候转型期"
+        sub_stages:
+          - name: "MIS 6"
+            age_start: 191000
+            age_end: 129000
+          - name: "MIS 7"
+            age_start: 243000
+            age_end: 191000
+          - name: "MIS 8"
+            age_start: 300000
+            age_end: 243000
+          - name: "MIS 9"
+            age_start: 337000
+            age_end: 300000
+          - name: "MIS 10"
+            age_start: 374000
+            age_end: 337000
+          - name: "MIS 11"
+            age_start: 424000
+            age_end: 374000
+
+      - name: "早更新世"
+        code: "Early_Pleistocene"
+        age_start: 774000
+        age_end: 2588000
+        color: "#E67E22"
+        description: "更新世早期气候波动"
+
+depth_age_models:
+  ice_core_default:
+    accumulation_rate_m_per_yr: 0.0002
+    ice_density_kg_per_m3: 917
+    porosity_surface: 0.7
+    porosity_closeoff: 0.1
+    closeoff_depth_m: 80
+
+  stalagmite_default:
+    growth_rate_mm_per_yr: 0.01
+    layer_counting: true
+    u_series_dating_points: []
+
+  default:
+    interpolation_method: "linear"
+    extrapolate: false
+    smooth_window: 5
+
+binning_rules:
+  time_bin_size_yr: 100
+  min_points_per_bin: 3
+  aggregation_methods:
+    d18O: "mean"
+    temperature: "mean"
+    precipitation: "mean"
+    dust: "median"
+    mg_ca: "mean"
+    d13C: "mean"
+
+outlier_detection:
+  method: "zscore"
+  zscore_threshold: 3.0
+  rolling_window: 50
+  iqr_multiplier: 1.5
+  by_stratigraphic_unit: true
+
+quality_flags:
+  GOOD: 0
+  SUSPECT: 1
+  OUTLIER: 2
+  MISSING: 3
+  INTERPOLATED: 4
