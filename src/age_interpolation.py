@@ -50,7 +50,24 @@ class AgeInterpolator:
             raise ValueError("数据帧缺少 'age' 列")
 
         df_sorted = df.sort_values("age").dropna(subset=["age"]).copy()
-        df_sorted = df_sorted.drop_duplicates(subset=["age"], keep="last")
+
+        resolution = age_grid[1] - age_grid[0] if len(age_grid) > 1 else self.global_settings.age_grid_resolution
+        df_sorted["_grid_key"] = np.round(df_sorted["age"].values / resolution) * resolution
+
+        agg_dict = {}
+        for col in df_sorted.columns:
+            if col == "_grid_key":
+                continue
+            if col == "age":
+                agg_dict[col] = "mean"
+            elif pd.api.types.is_numeric_dtype(df_sorted[col]):
+                agg_dict[col] = "mean"
+            else:
+                agg_dict[col] = "first"
+
+        df_sorted = df_sorted.groupby("_grid_key", as_index=False).agg(agg_dict)
+        df_sorted = df_sorted.drop(columns=["_grid_key"])
+        df_sorted = df_sorted.sort_values("age").reset_index(drop=True)
 
         if len(df_sorted) < 4 and method in ["cubic", "quadratic"]:
             method = "linear"
