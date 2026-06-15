@@ -14,6 +14,9 @@ class DataSource:
     file_type: str
     columns: Dict[str, str]
     enabled: bool = True
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    elevation_m: Optional[float] = None
     d18o_to_temp_coef: Optional[float] = None
     d18o_to_temp_intercept: Optional[float] = None
     d18o_to_precip_coef: Optional[float] = None
@@ -137,6 +140,9 @@ class ConfigManager:
                 file_type=item["file_type"],
                 columns=item["columns"],
                 enabled=item.get("enabled", True),
+                latitude=item.get("latitude"),
+                longitude=item.get("longitude"),
+                elevation_m=item.get("elevation_m"),
                 d18o_to_temp_coef=item.get("d18o_to_temp_coef"),
                 d18o_to_temp_intercept=item.get("d18o_to_temp_intercept"),
             )
@@ -158,6 +164,9 @@ class ConfigManager:
                 file_type=item["file_type"],
                 columns=item["columns"],
                 enabled=item.get("enabled", True),
+                latitude=item.get("latitude"),
+                longitude=item.get("longitude"),
+                elevation_m=item.get("elevation_m"),
                 d18o_to_precip_coef=item.get("d18o_to_precip_coef"),
                 d18o_to_precip_intercept=item.get("d18o_to_precip_intercept"),
             )

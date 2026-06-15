@@ -13,13 +13,15 @@ from src.age_interpolation import AgeInterpolator
 from src.correlation_analysis import CorrelationAnalyzer
 from src.visualization import StratigraphyVisualizer
 from src.report_generator import ReportGenerator
+from src.multi_core_comparison import MultiCoreComparator
 
 
 def print_banner():
     print("=" * 70)
-    print("  第四纪古气候数据分析工程 v1.0")
+    print("  第四纪古气候数据分析工程 v1.1")
     print("  Quaternary Paleoclimate Data Analysis Pipeline")
     print("  第四纪地质研究所 | 冰芯-石笋多指标古气候重建")
+    print("  + 多钻孔跨区域对比子系统")
     print("=" * 70)
     print()
 
@@ -78,23 +80,28 @@ def generate_sample_data_if_needed(force: bool = False):
     cm = ConfigManager()
     cm.load_all_configs()
     raw_dir = cm.get_raw_data_dir()
+    os.makedirs(raw_dir, exist_ok=True)
 
-    ice_path = os.path.join(raw_dir, "ice_core_dome_a.csv")
-    stal_path = os.path.join(raw_dir, "stalagmite_hulu.csv")
+    all_sources = cm.get_all_sources(enabled_only=True)
+    generated = 0
 
-    need_ice = force or not os.path.exists(ice_path)
-    need_stal = force or not os.path.exists(stal_path)
+    for source in all_sources:
+        need = force or not os.path.exists(source.file_path)
+        if not need:
+            continue
 
-    if need_ice or need_stal:
-        stage_header("生成示例数据")
-        if need_ice:
-            ice_df = generate_ice_core_data()
-            ice_df.to_csv(ice_path, index=False, encoding="utf-8-sig")
-            stage_ok(f"Dome A 冰芯示例数据: {len(ice_df)} 条 → {os.path.basename(ice_path)}")
-        if need_stal:
-            stal_df = generate_stalagmite_data()
-            stal_df.to_csv(stal_path, index=False, encoding="utf-8-sig")
-            stage_ok(f"葫芦洞石笋示例数据: {len(stal_df)} 条 → {os.path.basename(stal_path)}")
+        stage_header("生成示例数据") if generated == 0 else None
+
+        if source.id.startswith("ICE"):
+            seed = sum(ord(c) for c in source.id)
+            df = generate_ice_core_data(seed=seed, source_id=source.id)
+        else:
+            seed = sum(ord(c) for c in source.id) * 2
+            df = generate_stalagmite_data(seed=seed, source_id=source.id)
+
+        df.to_csv(source.file_path, index=False, encoding="utf-8-sig")
+        stage_ok(f"{source.name} ({source.id}): {len(df)} 条 → {os.path.basename(source.file_path)}")
+        generated += 1
 
 
 def list_configured_sources():
@@ -118,13 +125,14 @@ def run_pipeline(args):
     analyzer = CorrelationAnalyzer(cm)
     visualizer = StratigraphyVisualizer(cm)
     reporter = ReportGenerator(cm)
+    comparator = MultiCoreComparator(cm)
 
     pipeline_summary = {
         "started_at": datetime.now().isoformat(),
         "stages": {},
     }
 
-    stage_header("阶段 1/5 - 地层深度数据清洗")
+    stage_header("阶段 1/6 - 地层深度数据清洗")
     cleaned_data = {}
     cleaning_reports = {}
     for source in cm.get_all_sources(enabled_only=True):
@@ -152,7 +160,7 @@ def run_pipeline(args):
         print("\n  ✗ 没有可处理的数据源，流水线终止。")
         return
 
-    stage_header("阶段 2/5 - 年代插值与时间轴对齐")
+    stage_header("阶段 2/6 - 年代插值与时间轴对齐")
     merged_df, per_source_interp, age_grid = interpolator.process_all_sources(cleaned_data)
     stage_ok(f"公共年代栅格: {age_grid[0]:.0f} ~ {age_grid[-1]:.0f} yr BP, 步长 {age_grid[1]-age_grid[0]:.0f} yr")
     stage_ok(f"合并数据集: {len(merged_df)} 个时间点, {len(merged_df.columns)-1} 个代用指标列")
@@ -165,7 +173,7 @@ def run_pipeline(args):
         "merged_rows": int(len(merged_df)),
     }
 
-    stage_header("阶段 3/5 - 多指标相关性计算")
+    stage_header("阶段 3/6 - 多指标相关性计算")
     analysis_results = analyzer.run_full_analysis(merged_df, per_source_interp)
     for key, df in analysis_results.items():
         stage_ok(f"{key}: {df.shape[0]} 行 × {df.shape[1]} 列")
@@ -174,15 +182,32 @@ def run_pipeline(args):
         for k, df in analysis_results.items()
     }
 
+    stage_header("阶段 4/6 - 多钻孔地层对比分析")
+    comparison_results = comparator.run_full_comparison(per_source_interp)
+    for key, df in comparison_results.items():
+        if isinstance(df, pd.DataFrame):
+            stage_ok(f"{key}: {df.shape[0]} 行 × {df.shape[1]} 列")
+        else:
+            stage_ok(f"{key}")
+    pipeline_summary["stages"]["multi_core_comparison"] = {
+        k: list(df.columns) if isinstance(df, pd.DataFrame) else df
+        for k, df in comparison_results.items()
+    }
+
     figure_paths = {}
     if not args.skip_plots:
-        stage_header("阶段 4/5 - 分层时序可视化")
+        stage_header("阶段 5/6 - 分层时序可视化")
         figure_paths = visualizer.generate_all_plots(merged_df, per_source_interp, analysis_results)
+
+        if comparison_results:
+            multi_core_figs = visualizer.generate_multi_core_plots(comparison_results)
+            figure_paths.update(multi_core_figs)
+
         for plot_name, paths in figure_paths.items():
             for fmt, fp in paths.items():
                 stage_ok(f"{plot_name}.{fmt}: {os.path.basename(fp)}")
     else:
-        stage_header("阶段 4/5 - 分层时序可视化 (已跳过)")
+        stage_header("阶段 5/6 - 分层时序可视化 (已跳过)")
 
     pipeline_summary["stages"]["visualization"] = {
         k: list(v.keys()) for k, v in figure_paths.items()
@@ -190,7 +215,7 @@ def run_pipeline(args):
 
     report_path = None
     if not args.skip_report:
-        stage_header("阶段 5/5 - Word 研究报告生成")
+        stage_header("阶段 6/6 - Word 研究报告生成")
         try:
             report_path = reporter.generate_report(
                 cleaned_data=cleaned_data,
@@ -198,12 +223,13 @@ def run_pipeline(args):
                 merged_df=merged_df,
                 analysis_results=analysis_results,
                 figure_paths=figure_paths,
+                comparison_results=comparison_results,
             )
             stage_ok(f"报告已保存: {report_path}")
         except Exception as e:
             stage_info(f"✗ 报告生成失败: {e}")
     else:
-        stage_header("阶段 5/5 - Word 研究报告生成 (已跳过)")
+        stage_header("阶段 6/6 - Word 研究报告生成 (已跳过)")
 
     pipeline_summary["stages"]["report"] = {"path": report_path}
     pipeline_summary["finished_at"] = datetime.now().isoformat()

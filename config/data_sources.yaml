@@ -19,6 +19,9 @@ ice_core_sources:
   - id: "ICE_DOME_A"
     name: "Dome A 冰芯"
     location: "东南极洲 Dome A"
+    latitude: -80.37
+    longitude: 77.37
+    elevation_m: 4093
     file_path: "./data/raw/ice_core_dome_a.csv"
     file_type: "csv"
     columns:
@@ -34,6 +37,9 @@ ice_core_sources:
   - id: "ICE_GRIP"
     name: "GRIP 冰芯"
     location: "格陵兰 Summit"
+    latitude: 72.58
+    longitude: -37.62
+    elevation_m: 3232
     file_path: "./data/raw/ice_core_grip.csv"
     file_type: "csv"
     columns:
@@ -41,14 +47,52 @@ ice_core_sources:
       age: "age_yrBP"
       d18O: "delta18O"
       dD: "deltaD"
-    enabled: false
+      dust: "dust_ppb"
+    enabled: true
     d18o_to_temp_coef: 0.63
-    d18o_to_temp_intercept: -10.5
+    d18o_to_temp_intercept: -35.0
+
+  - id: "ICE_VOSTOK"
+    name: "Vostok 冰芯"
+    location: "东南极洲 Vostok"
+    latitude: -78.47
+    longitude: 106.83
+    elevation_m: 3488
+    file_path: "./data/raw/ice_core_vostok.csv"
+    file_type: "csv"
+    columns:
+      depth: "depth_m"
+      age: "age_yrBP"
+      d18O: "d18O_permil"
+      dust: "dust_concentration"
+    enabled: true
+    d18o_to_temp_coef: 0.69
+    d18o_to_temp_intercept: -54.0
+
+  - id: "ICE_EPICA"
+    name: "EPICA Dome C 冰芯"
+    location: "东南极洲 Dome C"
+    latitude: -75.10
+    longitude: 123.35
+    elevation_m: 3233
+    file_path: "./data/raw/ice_core_epica.csv"
+    file_type: "csv"
+    columns:
+      depth: "depth_m"
+      age: "age_yrBP"
+      d18O: "delta_18O"
+      dD: "delta_D"
+    enabled: true
+    d18o_to_temp_coef: 0.68
+    d18o_to_temp_intercept: -50.0
 
 stalagmite_sources:
   - id: "STAL_HULU"
     name: "葫芦洞石笋"
     location: "中国南京葫芦洞"
+    latitude: 32.23
+    longitude: 119.17
+    elevation_m: 50
     file_path: "./data/raw/stalagmite_hulu.csv"
     file_type: "csv"
     columns:
@@ -65,6 +109,9 @@ stalagmite_sources:
   - id: "STAL_SANBAO"
     name: "三宝洞石笋"
     location: "中国湖北三宝洞"
+    latitude: 31.67
+    longitude: 110.43
+    elevation_m: 1900
     file_path: "./data/raw/stalagmite_sanbao.csv"
     file_type: "csv"
     columns:
@@ -72,7 +119,7 @@ stalagmite_sources:
       age: "age_yrBP"
       d18O: "d18O"
       mg_ca: "Mg/Ca"
-    enabled: false
+    enabled: true
     d18o_to_precip_coef: -0.012
     d18o_to_precip_intercept: 1100.0
 

@@ -98,6 +98,7 @@ class ReportGenerator:
         merged_df: pd.DataFrame,
         analysis_results: Dict[str, pd.DataFrame],
         figure_paths: Dict[str, Dict[str, str]],
+        comparison_results: Optional[Dict[str, pd.DataFrame]] = None,
         output_filename: str = "paleoclimate_analysis_report.docx",
     ) -> str:
         self.doc = Document()
@@ -110,6 +111,10 @@ class ReportGenerator:
         self._add_interpolation_methodology()
         self._add_results_section(merged_df, analysis_results, figure_paths)
         self._add_correlation_section(analysis_results)
+
+        if comparison_results:
+            self._add_multi_core_comparison_section(comparison_results, figure_paths)
+
         self._add_conclusion()
         self._add_appendix()
 
@@ -329,8 +334,80 @@ class ReportGenerator:
             if key in analysis_results.get("correlation_matrix_" + m, {}):
                 continue
 
+    def _add_multi_core_comparison_section(
+        self,
+        comparison_results: Dict[str, pd.DataFrame],
+        figure_paths: Dict[str, Dict[str, str]],
+    ):
+        self.doc.add_page_break()
+        self._add_heading_cn("7  多钻孔地层对比分析", level=1)
+        self._add_paragraph_cn(
+            "本章对多个冰芯与石笋钻孔的代用指标数据进行跨区域对比分析，"
+            "通过统一年代标尺下的差值计算与时空格局识别，揭示不同区域气候演化的同步性与差异性。"
+        )
+
+        self._add_heading_cn("7.1  跨钻孔 δ¹⁸O 时序对比", level=2)
+        self._add_paragraph_cn(
+            "图 9 展示了所有参与对比的钻孔在统一年代标尺下的 δ¹⁸O 时序曲线。"
+            "各钻孔曲线沿同一时间轴排列，可直观比较不同区域气候事件的相位关系与幅度差异。"
+        )
+
+        if "multi_core_linked_view" in figure_paths:
+            fig_paths = figure_paths["multi_core_linked_view"]
+            if "png" in fig_paths:
+                self._add_image_figure(fig_paths["png"], "图 9  多钻孔 δ¹⁸O 时序与差值联动视图")
+            elif "html" in fig_paths:
+                self._add_paragraph_cn(f"[交互式图表: {os.path.basename(fig_paths['html'])}]")
+
+        if "epoch_wise_comparison" in comparison_results:
+            self._add_heading_cn("7.2  各地层单位钻孔对比统计", level=2)
+            self._add_paragraph_cn(
+                "表 5 按地层单位统计了各钻孔 δ¹⁸O 的均值、标准差等特征，"
+                "便于定量比较不同地质时期各区域的气候状态差异。"
+            )
+            epoch_df = comparison_results["epoch_wise_comparison"]
+            self._add_dataframe_table(epoch_df, title="表 5  各地层单位-各钻孔 δ¹⁸O 统计对比")
+
+        if "correlation_matrix_pearson" in comparison_results:
+            self._add_heading_cn("7.3  跨钻孔相关性矩阵", level=2)
+            self._add_paragraph_cn(
+                "表 6 展示了各钻孔之间的 Pearson 相关系数矩阵，"
+                "反映了不同区域气候信号在万年尺度上的协同变化程度。"
+            )
+            corr_df = comparison_results["correlation_matrix_pearson"].copy()
+            self._add_dataframe_table(corr_df, title="表 6  跨钻孔 Pearson 相关系数矩阵")
+
+        if "epoch_core_heatmap_mean" in figure_paths:
+            self._add_heading_cn("7.4  地层-钻孔均值热力图", level=2)
+            self._add_paragraph_cn(
+                "图 10 以热力图形式直观展示了各地层单位中各钻孔 δ¹⁸O 均值的空间格局，"
+                "颜色冷暖反映数值高低，便于识别区域分异规律。"
+            )
+            fig_paths = figure_paths.get("epoch_core_heatmap_mean", {})
+            if "png" in fig_paths:
+                self._add_image_figure(fig_paths["png"], "图 10  地层单位-钻孔均值热力图")
+            elif "html" in fig_paths:
+                self._add_paragraph_cn(f"[交互式图表: {os.path.basename(fig_paths['html'])}]")
+
+        if "cross_core_diff_heatmap" in figure_paths:
+            self._add_heading_cn("7.5  跨区域气候差异热力图", level=2)
+            self._add_paragraph_cn(
+                "图 11 为跨钻孔差值热力图，通过时间滑块可查看不同年代各钻孔之间的 δ¹⁸O 差异矩阵，"
+                "揭示气候空间梯度随时间的演化特征。红色表示差值为正，蓝色表示差值为负。"
+            )
+            fig_paths = figure_paths.get("cross_core_diff_heatmap", {})
+            if "html" in fig_paths:
+                self._add_paragraph_cn(f"[交互式热力图: {os.path.basename(fig_paths['html'])}（可拖动年代滑块）]")
+            if "png" in fig_paths:
+                self._add_image_figure(fig_paths["png"], "图 11  跨钻孔差值热力图（最新年代快照）")
+
+        self._add_paragraph_cn(
+            "多钻孔对比分析结果表明，各区域气候演化在轨道尺度上具有显著的同步性，"
+            "但在千年-百年尺度上存在明显的区域差异，反映了不同气候系统对外部强迫响应的敏感性差异。"
+        )
+
     def _add_conclusion(self):
-        self._add_heading_cn("7  结论与展望", level=1)
+        self._add_heading_cn("8  结论与展望", level=1)
         self._add_paragraph_cn(
             "本研究通过冰芯与石笋多代用指标的联合分析，重建了研究区万年尺度的温度与降水演化序列，"
             "主要结论如下："

@@ -340,6 +340,332 @@ class StratigraphyVisualizer:
         name = output_name or f"depth_profile_{value_col}"
         return self._save_figure(fig, name)
 
+    def plot_multi_core_timeseries(
+        self,
+        comparison_df: pd.DataFrame,
+        target_proxy: str = "d18O",
+        output_name: str = "multi_core_timeseries",
+    ) -> Dict[str, str]:
+        if comparison_df.empty or "age" not in comparison_df.columns:
+            return {}
+
+        core_cols = [c for c in comparison_df.columns if c not in ["age", "epoch", "epoch_code"]]
+        if len(core_cols) < 2:
+            return {}
+
+        df = comparison_df.sort_values("age").copy()
+        age_min = float(df["age"].min())
+        age_max = float(df["age"].max())
+
+        fig = go.Figure()
+        palette = px.colors.qualitative.Vivid
+
+        for i, col in enumerate(core_cols):
+            color = palette[i % len(palette)]
+            fig.add_trace(go.Scatter(
+                x=df["age"], y=df[col],
+                mode="lines", name=col,
+                line=dict(color=color, width=1.8),
+                legendgroup=col,
+                hovertemplate=f"{col}: %{{y:.3f}}<extra></extra>",
+            ))
+
+        self._add_epoch_shading(fig, age_min, age_max)
+
+        fig.update_layout(
+            title=f"多钻孔 {target_proxy} 时序对比",
+            xaxis_title=f"年代 ({self.global_settings.age_unit})",
+            xaxis=dict(autorange="reversed", showgrid=True, gridcolor="#E5E8E8"),
+            yaxis_title=f"{target_proxy} 值",
+            yaxis=dict(showgrid=True, gridcolor="#E5E8E8"),
+            height=self.settings.figure_height,
+            width=self.settings.figure_width,
+            template=self.settings.theme,
+            legend=dict(orientation="h", y=-0.15),
+            hovermode="x unified",
+            margin=dict(t=100, b=100),
+            updatemenus=[{
+                "buttons": [
+                    {
+                        "label": "显示全部",
+                        "method": "update",
+                        "args": [{"visible": [True] * len(core_cols)}, {"title": f"多钻孔 {target_proxy} 时序对比 - 全部"}],
+                    },
+                    {
+                        "label": "仅冰芯",
+                        "method": "update",
+                        "args": [
+                            {"visible": ["ICE" in c.upper() for c in core_cols]},
+                            {"title": f"多钻孔 {target_proxy} 时序对比 - 仅冰芯"},
+                        ],
+                    },
+                    {
+                        "label": "仅石笋",
+                        "method": "update",
+                        "args": [
+                            {"visible": ["STAL" in c.upper() or "HULU" in c.upper() for c in core_cols]},
+                            {"title": f"多钻孔 {target_proxy} 时序对比 - 仅石笋"},
+                        ],
+                    },
+                ],
+                "direction": "down",
+                "showactive": True,
+                "x": 0.05,
+                "y": 1.15,
+            }],
+        )
+
+        return self._save_figure(fig, output_name)
+
+    def plot_cross_core_difference_heatmap(
+        self,
+        comparison_df: pd.DataFrame,
+        output_name: str = "cross_core_diff_heatmap",
+        bin_size: int = 1000,
+    ) -> Dict[str, str]:
+        if comparison_df.empty or "age" not in comparison_df.columns:
+            return {}
+
+        core_cols = [c for c in comparison_df.columns if c not in ["age", "epoch", "epoch_code"]]
+        if len(core_cols) < 2:
+            return {}
+
+        df = comparison_df.sort_values("age").copy()
+        df["age_bin"] = (df["age"] // bin_size) * bin_size
+
+        epoch_labels = []
+        for _, row in df.iterrows():
+            epoch_labels.append(row.get("epoch", "Unknown"))
+        df["epoch_label"] = epoch_labels
+
+        mean_by_bin = df.groupby("age_bin")[core_cols].mean().reset_index()
+
+        n_bins = len(mean_by_bin)
+        n_cores = len(core_cols)
+
+        diff_matrix = np.zeros((n_cores, n_cores, n_bins))
+        for k in range(n_bins):
+            for i in range(n_cores):
+                for j in range(n_cores):
+                    val_i = mean_by_bin.iloc[k][core_cols[i]]
+                    val_j = mean_by_bin.iloc[k][core_cols[j]]
+                    if pd.notna(val_i) and pd.notna(val_j):
+                        diff_matrix[i, j, k] = val_i - val_j
+                    else:
+                        diff_matrix[i, j, k] = np.nan
+
+        fig = px.imshow(
+            diff_matrix[:, :, -1] if n_bins > 0 else diff_matrix[:, :, 0],
+            x=core_cols,
+            y=core_cols,
+            color_continuous_scale="RdBu_r",
+            aspect="auto",
+            text_auto=".2f",
+        )
+
+        steps = []
+        for k in range(n_bins):
+            bin_age = mean_by_bin.iloc[k]["age_bin"]
+            step = {
+                "method": "update",
+                "args": [
+                    {"z": [diff_matrix[:, :, k]]},
+                    {"title": f"跨钻孔差值热力图 - 年代 {int(bin_age)} yr BP"},
+                ],
+                "label": f"{int(bin_age)} yr BP",
+            }
+            steps.append(step)
+
+        sliders = [{
+            "active": n_bins - 1,
+            "currentvalue": {"prefix": "年代: "},
+            "pad": {"t": 50},
+            "steps": steps,
+        }]
+
+        fig.update_layout(
+            title=f"跨钻孔差值热力图 - 年代 {int(mean_by_bin.iloc[-1]['age_bin'])} yr BP",
+            xaxis_title="钻孔",
+            yaxis_title="钻孔",
+            height=max(600, n_cores * 80),
+            width=max(800, n_cores * 120),
+            template=self.settings.theme,
+            sliders=sliders,
+            coloraxis_colorbar_title="差值",
+        )
+
+        return self._save_figure(fig, output_name)
+
+    def plot_multi_core_subplots(
+        self,
+        comparison_df: pd.DataFrame,
+        diff_df: pd.DataFrame,
+        output_name: str = "multi_core_linked_view",
+    ) -> Dict[str, str]:
+        if comparison_df.empty or "age" not in comparison_df.columns:
+            return {}
+
+        core_cols = [c for c in comparison_df.columns if c not in ["age", "epoch", "epoch_code"]]
+        if len(core_cols) < 2:
+            return {}
+
+        df = comparison_df.sort_values("age").copy()
+        age_min = float(df["age"].min())
+        age_max = float(df["age"].max())
+        palette = px.colors.qualitative.Vivid
+
+        fig = make_subplots(
+            rows=2, cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.08,
+            subplot_titles=("多钻孔时序曲线", "跨区域差值变化"),
+            row_heights=[0.6, 0.4],
+        )
+
+        for i, col in enumerate(core_cols):
+            color = palette[i % len(palette)]
+            fig.add_trace(go.Scatter(
+                x=df["age"], y=df[col],
+                mode="lines", name=col,
+                line=dict(color=color, width=1.8),
+                legendgroup=col,
+            ), row=1, col=1)
+
+        if not diff_df.empty:
+            diff_cols = [c for c in diff_df.columns if c.startswith("delta_")]
+            diff_sorted = diff_df.sort_values("age").copy()
+            for i, col in enumerate(diff_cols[:3]):
+                color = px.colors.qualitative.Set2[i % len(px.colors.qualitative.Set2)]
+                fig.add_trace(go.Scatter(
+                    x=diff_sorted["age"], y=diff_sorted[col],
+                    mode="lines", name=col,
+                    line=dict(color=color, width=1.5, dash="dash"),
+                    legendgroup="diff",
+                ), row=2, col=1)
+
+        for row in [1, 2]:
+            shapes = []
+            for epoch in self.epochs:
+                e_start = epoch["age_start"]
+                e_end = epoch["age_end"]
+                overlap_start = max(age_min, e_start)
+                overlap_end = min(age_max, e_end)
+                if overlap_end <= overlap_start:
+                    continue
+                shapes.append({
+                    "type": "rect",
+                    "x0": overlap_start,
+                    "x1": overlap_end,
+                    "y0": 0,
+                    "y1": 1,
+                    "xref": "x",
+                    "yref": f"y{row} domain",
+                    "fillcolor": epoch.get("color", "#D5D8DC"),
+                    "opacity": 0.1,
+                    "layer": "below",
+                    "line_width": 0,
+                })
+            fig.update_layout(shapes=shapes + list(fig.layout.shapes or []))
+
+        fig.update_xaxes(
+            title_text=f"年代 ({self.global_settings.age_unit})",
+            autorange="reversed",
+            showgrid=True, gridcolor="#E5E8E8",
+            row=2, col=1,
+        )
+        fig.update_yaxes(title_text="代用指标值", showgrid=True, gridcolor="#E5E8E8", row=1, col=1)
+        fig.update_yaxes(title_text="差值", showgrid=True, gridcolor="#E5E8E8", row=2, col=1)
+
+        fig.update_layout(
+            title="多钻孔地层对比 - 时序与差值联动视图",
+            height=self.settings.figure_height * 1.2,
+            width=self.settings.figure_width,
+            template=self.settings.theme,
+            legend=dict(orientation="h", y=-0.1),
+            hovermode="x unified",
+            margin=dict(t=80, b=120),
+        )
+
+        return self._save_figure(fig, output_name)
+
+    def plot_epoch_core_heatmap(
+        self,
+        epoch_stats_df: pd.DataFrame,
+        value_col: str = "mean",
+        output_name: str = "epoch_core_heatmap",
+    ) -> Dict[str, str]:
+        if epoch_stats_df.empty or "epoch" not in epoch_stats_df.columns:
+            return {}
+
+        pivot = epoch_stats_df.pivot(index="core_id", columns="epoch", values=value_col)
+        if pivot.empty:
+            return {}
+
+        fig = px.imshow(
+            pivot.values,
+            x=pivot.columns,
+            y=pivot.index,
+            color_continuous_scale="RdBu_r",
+            aspect="auto",
+            text_auto=".2f",
+        )
+
+        fig.update_layout(
+            title=f"各地层单位 - 各钻孔 {value_col} 热力图",
+            xaxis_title="地层单位",
+            yaxis_title="钻孔 ID",
+            height=max(500, len(pivot.index) * 50),
+            width=max(700, len(pivot.columns) * 120),
+            template=self.settings.theme,
+            coloraxis_colorbar_title=value_col,
+        )
+
+        return self._save_figure(fig, output_name)
+
+    def generate_multi_core_plots(
+        self,
+        comparison_results: Dict[str, pd.DataFrame],
+    ) -> Dict[str, Dict[str, str]]:
+        output_paths = {}
+
+        if "comparison_d18O" in comparison_results:
+            df = comparison_results["comparison_d18O"]
+            output_paths["multi_core_d18O"] = self.plot_multi_core_timeseries(
+                df, target_proxy="δ¹⁸O", output_name="multi_core_d18O_comparison"
+            )
+
+        if "comparison_temperature" in comparison_results:
+            df = comparison_results["comparison_temperature"]
+            output_paths["multi_core_temperature"] = self.plot_multi_core_timeseries(
+                df, target_proxy="温度", output_name="multi_core_temperature_comparison"
+            )
+
+        if "comparison_d18O" in comparison_results and "pairwise_differences" in comparison_results:
+            output_paths["multi_core_linked_view"] = self.plot_multi_core_subplots(
+                comparison_results["comparison_d18O"],
+                comparison_results["pairwise_differences"],
+            )
+
+        if "comparison_d18O" in comparison_results:
+            output_paths["cross_core_diff_heatmap"] = self.plot_cross_core_difference_heatmap(
+                comparison_results["comparison_d18O"],
+                output_name="cross_core_difference_heatmap",
+            )
+
+        if "epoch_wise_comparison" in comparison_results:
+            output_paths["epoch_core_heatmap_mean"] = self.plot_epoch_core_heatmap(
+                comparison_results["epoch_wise_comparison"],
+                value_col="mean",
+                output_name="epoch_core_mean_heatmap",
+            )
+            output_paths["epoch_core_heatmap_std"] = self.plot_epoch_core_heatmap(
+                comparison_results["epoch_wise_comparison"],
+                value_col="std",
+                output_name="epoch_core_std_heatmap",
+            )
+
+        return output_paths
+
     def _save_figure(self, fig: go.Figure, output_name: str) -> Dict[str, str]:
         out_dir = self.config.get_output_dir()
         os.makedirs(out_dir, exist_ok=True)
